@@ -1,0 +1,6 @@
+{
+  "name": "FarmLink",
+  "description": "Direct agricultural negotiation marketplace connecting farmers and buyers with transparent mandi prices, multi-round offer negotiations, and fair trade tracking.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
