@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFarmLink } from '../../context/FarmLinkContext';
 import { BuyerSearchDiscover } from './BuyerSearchDiscover';
 import { BuyerListingDetail } from './BuyerListingDetail';
@@ -12,6 +12,15 @@ import { ProduceListing } from '../../types';
 export const BuyerDashboard: React.FC = () => {
   const { activeTab, selectedListingId, setSelectedListingId, listings } = useFarmLink();
   const [activeListing, setActiveListing] = useState<ProduceListing | null>(null);
+
+  useEffect(() => {
+    if (!selectedListingId) {
+      setActiveListing(null);
+    } else {
+      const found = listings.find(l => l.id === selectedListingId) || null;
+      if (found) setActiveListing(found);
+    }
+  }, [selectedListingId, listings]);
 
   // If a selectedListingId was passed via notifications
   const effectiveListing = activeListing || (selectedListingId ? listings.find(l => l.id === selectedListingId) || null : null);
@@ -28,7 +37,7 @@ export const BuyerDashboard: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-stone-50 pb-16">
-      {activeTab === 'search-discover' && (
+      {(activeTab === 'search' || activeTab === 'search-discover') && (
         effectiveListing ? (
           <BuyerListingDetail
             listing={effectiveListing}

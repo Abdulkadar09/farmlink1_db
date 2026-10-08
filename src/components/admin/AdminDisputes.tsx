@@ -17,7 +17,7 @@ export const AdminDisputes: React.FC = () => {
   const { orders, resolveDispute, dismissDispute, openConfirmation } = useFarmLink();
 
   // All disputed or previously disputed orders
-  const disputedOrders = orders.filter(o => o.status === 'Disputed' || o.disputeNote);
+  const disputedOrders = orders.filter(o => o.status === 'Disputed' || o.disputeNote || o.disputeReason);
 
   const [selectedDisputeOrder, setSelectedDisputeOrder] = useState<Order | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState('');

@@ -15,9 +15,9 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'overview' && <AdminOverview />}
       {activeTab === 'users' && <AdminUsers />}
       {activeTab === 'listings' && <AdminListings />}
-      {activeTab === 'price-index' && <AdminPriceIndex />}
-      {activeTab === 'disputes' && <AdminDisputes />}
-      {activeTab === 'logs' && <AdminSystemLogs />}
+      {(activeTab === 'price-index' || activeTab === 'settings') && <AdminPriceIndex />}
+      {(activeTab === 'disputes' || activeTab === 'orders-disputes') && <AdminDisputes />}
+      {(activeTab === 'logs' || activeTab === 'reports') && <AdminSystemLogs />}
     </div>
   );
 };

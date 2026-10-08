@@ -89,11 +89,12 @@ export const BuyerSavedAlerts: React.FC = () => {
       ) : (
         <div className="space-y-4">
           {myAlerts.map(alert => {
+            const radiusVal = alert.radiusKm ?? alert.maxRadiusKm;
             // Count matching active listings in marketplace
             const matchingListings = listings.filter(l =>
               l.status === 'Active' &&
               l.cropName.toLowerCase().includes(alert.cropName.toLowerCase()) &&
-              l.distanceKm <= alert.radiusKm
+              l.distanceKm <= radiusVal
             );
 
             return (
@@ -113,7 +114,7 @@ export const BuyerSavedAlerts: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500 mt-1">
                       <span className="flex items-center gap-1 font-semibold text-stone-700">
                         <MapPin className="w-3.5 h-3.5 text-emerald-700" />
-                        Within {alert.radiusKm} km radius
+                        Within {radiusVal} km radius
                       </span>
                       {alert.maxTargetPrice && (
                         <>

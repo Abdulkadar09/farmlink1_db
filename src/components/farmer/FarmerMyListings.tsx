@@ -25,6 +25,8 @@ export const FarmerMyListings: React.FC = () => {
     markListingExpired,
     deleteListing,
     setActiveTab,
+    selectedListingId,
+    setSelectedListingId,
     openConfirmation,
     openMapModal
   } = useFarmLink();
@@ -49,12 +51,19 @@ export const FarmerMyListings: React.FC = () => {
     return myListings.filter(l => l.status === filterStatus);
   }, [myListings, filterStatus]);
 
-  // If farmer clicked "View Offers" on a listing, render the 6c sub-view
-  if (viewOffersListing) {
+  const effectiveOffersListing =
+    viewOffersListing ||
+    (selectedListingId ? listings.find(l => l.id === selectedListingId) || null : null);
+
+  // If farmer clicked "View Offers" on a listing or arrived via notification, render the 6c sub-view
+  if (effectiveOffersListing) {
     return (
       <FarmerListingOffers
-        listing={viewOffersListing}
-        onBack={() => setViewOffersListing(null)}
+        listing={effectiveOffersListing}
+        onBack={() => {
+          setViewOffersListing(null);
+          setSelectedListingId(null);
+        }}
       />
     );
   }

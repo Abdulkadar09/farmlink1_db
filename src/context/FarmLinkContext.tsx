@@ -59,6 +59,7 @@ interface FarmLinkContextType {
   negotiations: Negotiation[];
   orders: Order[];
   alerts: SavedAlert[];
+  savedAlerts: SavedAlert[];
   notifications: AppNotification[];
   auditLogs: AuditLog[];
 
@@ -84,24 +85,35 @@ interface FarmLinkContextType {
 
   // Orders & Disputes
   markOrderPickedUp: (orderId: string) => void;
+  completeOrder: (orderId: string) => void;
   reportOrderDispute: (orderId: string, reason: string) => void;
+  fileDispute: (orderId: string, reason: string) => void;
   adminResolveDispute: (orderId: string, resolution: string) => void;
+  resolveDispute: (orderId: string, resolution: string) => void;
+  dismissDispute: (orderId: string) => void;
   adminCancelOrder: (orderId: string) => void;
 
   // Alerts
-  addAlert: (cropName: string, maxRadiusKm: number) => void;
+  addAlert: (cropName: string, maxRadiusKm: number, maxTargetPrice?: number) => void;
   deleteAlert: (id: string) => void;
 
   // Notifications
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: () => void;
+  navigateToNotification: (notif: AppNotification) => void;
 
   // Admin
   toggleUserBan: (userId: string) => void;
+  suspendUser: (userId: string) => void;
+  toggleVerifyUser: (userId: string) => void;
   removeListingAdmin: (listingId: string) => void;
+  flagListing: (listingId: string, reason?: string) => void;
   addMasterCrop: (crop: Omit<CropMaster, 'id' | 'lastUpdated'>) => void;
+  addNewCrop: (crop: Omit<CropMaster, 'id' | 'lastUpdated'>) => void;
   editMasterCropPrice: (cropId: string, newPrice: number) => void;
+  updateCropMandiPrice: (cropId: string, newPrice: number) => void;
   deleteMasterCrop: (cropId: string) => void;
+  refreshMandiPrices: () => void;
   addAuditLog: (action: string, target: string) => void;
 
   // Modals
@@ -614,6 +626,7 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       quantity: finalQty,
       unit: neg.unit,
       finalPricePerUnit: finalPrice,
+      agreedPrice: finalPrice,
       totalAmount: Math.round(finalPrice * finalQty),
       pickupLocation: neg.farmAddress,
       coordinates: neg.coordinates,
@@ -626,15 +639,16 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Notify other party
     const targetUserId = currentUser?.id === neg.farmerId ? neg.buyerId : neg.farmerId;
-    const targetRoleName = currentUser?.id === neg.farmerId ? 'Farmer' : 'Buyer';
+    const actorRoleName = currentUser?.id === neg.farmerId ? 'Farmer' : 'Buyer';
+    const recipientIsFarmer = targetUserId === neg.farmerId;
     const notif: AppNotification = {
       id: `notif-${Date.now()}`,
       userId: targetUserId,
       title: 'Offer Accepted! Order Created',
-      message: `${targetRoleName} accepted the offer of ₹${finalPrice}/${neg.unit} for ${neg.cropName}. Order #${orderId} has been generated for Cash on Pickup.`,
+      message: `${actorRoleName} accepted the offer of ₹${finalPrice}/${neg.unit} for ${neg.cropName}. Order #${orderId} has been generated for Cash on Pickup.`,
       type: 'offer_accepted',
-      linkTab: targetRoleName === 'Farmer' ? 'orders' : 'orders',
-      linkId: orderId,
+      linkTab: recipientIsFarmer ? 'my-listings' : 'orders',
+      linkId: recipientIsFarmer ? neg.listingId : orderId,
       timestamp: 'Just now',
       read: false
     };
@@ -665,6 +679,7 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } : n));
 
     const targetUserId = currentUser?.id === neg.farmerId ? neg.buyerId : neg.farmerId;
+    const recipientIsFarmer = targetUserId === neg.farmerId;
     const senderName = currentUser?.name || 'User';
     const notif: AppNotification = {
       id: `notif-${Date.now()}`,
@@ -672,8 +687,8 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       title: 'Offer Rejected',
       message: `${senderName} declined the offer on ${neg.cropName}. Negotiation closed.`,
       type: 'offer_rejected',
-      linkTab: 'negotiations',
-      linkId: negotiationId,
+      linkTab: recipientIsFarmer ? 'my-listings' : 'negotiations',
+      linkId: recipientIsFarmer ? neg.listingId : negotiationId,
       timestamp: 'Just now',
       read: false
     };
@@ -697,7 +712,6 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!neg || !currentUser) return;
 
     if (neg.currentRound >= 4) {
-      alert('Maximum 4 negotiation rounds reached. You can only Accept or Reject this offer.');
       return;
     }
 
@@ -734,7 +748,7 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       message: `${currentUser.name} sent a counter offer of ₹${newPrice}/${neg.unit} on ${neg.cropName}.`,
       type: 'counter_offer',
       linkTab: senderRole === 'farmer' ? 'negotiations' : 'my-listings',
-      linkId: neg.listingId,
+      linkId: senderRole === 'farmer' ? negotiationId : neg.listingId,
       timestamp: 'Just now',
       read: false
     };
@@ -777,7 +791,7 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         message: `Buyer ${order.buyerName} marked Order #${order.id} as Picked Up via Cash on Pickup. Trade completed!`,
         type: 'order_update',
         linkTab: 'my-listings',
-        linkId: order.id,
+        linkId: order.listingId || order.id,
         timestamp: 'Just now',
         read: false
       };
@@ -799,7 +813,8 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setOrders(prev => prev.map(o => o.id === orderId ? {
       ...o,
       status: 'Disputed',
-      disputeReason: reason
+      disputeReason: reason,
+      disputeNote: reason
     } : o));
 
     const notif: AppNotification = {
@@ -849,6 +864,27 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .catch(console.error);
   };
 
+  const dismissDispute = (orderId: string) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? {
+      ...o,
+      status: 'Pending Pickup',
+      disputeResolution: 'Report dismissed by Marketplace Admin'
+    } : o));
+    addAuditLog('Dispute Report Dismissed', `Order #${orderId} dispute dismissed and restored to Pending Pickup`);
+
+    fetch(`/api/admin/orders/${orderId}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resolution: 'Dismissed by Admin', adminEmail: currentUser?.email })
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(resData => {
+        if (resData?.orders) setOrders(resData.orders);
+        if (resData?.auditLogs) setAuditLogs(resData.auditLogs);
+      })
+      .catch(console.error);
+  };
+
   const adminCancelOrder = (orderId: string) => {
     setOrders(prev => prev.map(o => o.id === orderId ? {
       ...o,
@@ -869,7 +905,7 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Alerts
-  const addAlert = (cropName: string, maxRadiusKm: number) => {
+  const addAlert = (cropName: string, maxRadiusKm: number, maxTargetPrice?: number) => {
     if (!currentUser) return;
     const matchCount = listings.filter(l => 
       l.cropName.toLowerCase().includes(cropName.toLowerCase()) && 
@@ -882,6 +918,8 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       buyerId: currentUser.id,
       cropName,
       maxRadiusKm,
+      radiusKm: maxRadiusKm,
+      maxTargetPrice,
       createdAt: new Date().toISOString().split('T')[0],
       matchCount
     };
@@ -912,7 +950,7 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .catch(console.error);
   };
 
-  // Notifications
+  // Notifications & Deep-Link Navigation
   const markNotificationAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
 
@@ -942,6 +980,91 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .catch(console.error);
   };
 
+  const navigateToNotification = (notif: AppNotification) => {
+    markNotificationAsRead(notif.id);
+    setActiveView('dashboard');
+
+    const role = currentUser?.role || 'farmer';
+
+    if (role === 'farmer') {
+      if (notif.linkId) {
+        if (notif.linkId.startsWith('list-')) {
+          setSelectedListingId(notif.linkId);
+        } else if (notif.linkId.startsWith('neg-')) {
+          const matchedNeg = negotiations.find(n => n.id === notif.linkId);
+          if (matchedNeg) {
+            setSelectedListingId(matchedNeg.listingId);
+            setSelectedNegotiationId(matchedNeg.id);
+          }
+        } else if (notif.linkId.startsWith('ORD-')) {
+          const matchedOrder = orders.find(o => o.id === notif.linkId);
+          if (matchedOrder?.listingId) {
+            setSelectedListingId(matchedOrder.listingId);
+          }
+        }
+      }
+      // Farmer dashboard valid tabs: 'add-listing' | 'my-listings' | 'notifications' | 'profile'
+      const targetTab =
+        notif.linkTab === 'add-listing' || notif.linkTab === 'profile'
+          ? notif.linkTab
+          : 'my-listings';
+      setActiveTab(targetTab);
+      return;
+    }
+
+    if (role === 'buyer') {
+      if (
+        notif.type === 'alert_match' ||
+        notif.linkTab === 'search' ||
+        notif.linkTab === 'search-discover'
+      ) {
+        if (notif.linkId && notif.linkId.startsWith('list-')) {
+          setSelectedListingId(notif.linkId);
+        }
+        setActiveTab('search');
+        return;
+      }
+
+      if (
+        notif.type === 'offer_accepted' ||
+        notif.type === 'order_update' ||
+        notif.linkTab === 'orders' ||
+        notif.linkId?.startsWith('ORD-')
+      ) {
+        setActiveTab('orders');
+        return;
+      }
+
+      if (notif.linkId) {
+        if (notif.linkId.startsWith('neg-')) {
+          setSelectedNegotiationId(notif.linkId);
+        } else if (notif.linkId.startsWith('list-')) {
+          const matchedNeg = negotiations.find(
+            n => n.listingId === notif.linkId && n.buyerId === currentUser?.id
+          );
+          if (matchedNeg) {
+            setSelectedNegotiationId(matchedNeg.id);
+          } else {
+            setSelectedListingId(notif.linkId);
+            setActiveTab('search');
+            return;
+          }
+        }
+      }
+      setActiveTab('negotiations');
+      return;
+    }
+
+    // Admin
+    if (notif.linkTab === 'orders-disputes' || notif.linkTab === 'disputes' || notif.type === 'dispute_alert') {
+      setActiveTab('orders-disputes');
+    } else if (notif.linkTab) {
+      setActiveTab(notif.linkTab);
+    } else {
+      setActiveTab('overview');
+    }
+  };
+
   // Admin features
   const toggleUserBan = (userId: string) => {
     setUsers(prev => prev.map(u => {
@@ -965,6 +1088,29 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .catch(console.error);
   };
 
+  const toggleVerifyUser = (userId: string) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return;
+    const nextVerified = !targetUser.isVerified;
+
+    setUsers(prev => prev.map(u => (u.id === userId ? { ...u, isVerified: nextVerified } : u)));
+    addAuditLog(
+      nextVerified ? 'User Identity Verified' : 'User Verification Revoked',
+      `${targetUser.name} (${targetUser.role})`
+    );
+
+    fetch(`/api/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isVerified: nextVerified })
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(resData => {
+        if (resData?.users) setUsers(resData.users);
+      })
+      .catch(console.error);
+  };
+
   const removeListingAdmin = (listingId: string) => {
     setListings(prev => prev.filter(l => l.id !== listingId));
 
@@ -979,6 +1125,21 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (resData?.auditLogs) setAuditLogs(resData.auditLogs);
       })
       .catch(console.error);
+  };
+
+  const flagListing = (listingId: string, reason?: string) => {
+    const target = listings.find(l => l.id === listingId);
+    setListings(prev => prev.map(l => (l.id === listingId ? { ...l, status: 'Flagged' } : l)));
+    addAuditLog(
+      'Listing Flagged / Removed',
+      `Listing #${listingId} (${target?.cropName || 'Produce'}): ${reason || 'Policy violation'}`
+    );
+
+    fetch(`/api/listings/${listingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'Expired', notes: `[FLAGGED BY ADMIN: ${reason || 'Policy violation'}]` })
+    }).catch(console.error);
   };
 
   const addMasterCrop = (cropData: Omit<CropMaster, 'id' | 'lastUpdated'>) => {
@@ -1044,6 +1205,37 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .catch(console.error);
   };
 
+  const refreshMandiPrices = () => {
+    setCrops(prev =>
+      prev.map(c => ({
+        ...c,
+        lastUpdated: 'Synced just now'
+      }))
+    );
+    addAuditLog('APMC Mandi Index Synced', `Synchronized ${crops.length} commodity benchmark prices`);
+  };
+
+  // Normalized data collections so all components have every expected field
+  const normalizedOrders = orders.map(o => ({
+    ...o,
+    agreedPrice: o.agreedPrice ?? o.finalPricePerUnit,
+    disputeNote: o.disputeNote ?? o.disputeReason
+  }));
+
+  const normalizedAlerts = alerts.map(a => ({
+    ...a,
+    radiusKm: a.radiusKm ?? a.maxRadiusKm
+  }));
+
+  const normalizedAuditLogs = auditLogs.map(log => ({
+    ...log,
+    userId: log.userId || 'user-admin-1',
+    userName: log.userName || log.adminEmail || 'Marketplace Admin',
+    userRole: log.userRole || (log.adminEmail?.includes('system') ? 'system' : 'admin'),
+    action: log.action || log.adminAction || 'System Event',
+    details: log.details || log.target || ''
+  }));
+
   return (
     <FarmLinkContext.Provider
       value={{
@@ -1061,10 +1253,11 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         crops,
         listings,
         negotiations,
-        orders,
-        alerts,
+        orders: normalizedOrders,
+        alerts: normalizedAlerts,
+        savedAlerts: normalizedAlerts,
         notifications,
-        auditLogs,
+        auditLogs: normalizedAuditLogs,
         login,
         register,
         verifyOtp,
@@ -1080,18 +1273,29 @@ export const FarmLinkProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         rejectOffer,
         counterOffer,
         markOrderPickedUp,
+        completeOrder: markOrderPickedUp,
         reportOrderDispute,
+        fileDispute: reportOrderDispute,
         adminResolveDispute,
+        resolveDispute: adminResolveDispute,
+        dismissDispute,
         adminCancelOrder,
         addAlert,
         deleteAlert,
         markNotificationAsRead,
         markAllNotificationsAsRead,
+        navigateToNotification,
         toggleUserBan,
+        suspendUser: toggleUserBan,
+        toggleVerifyUser,
         removeListingAdmin,
+        flagListing,
         addMasterCrop,
+        addNewCrop: addMasterCrop,
         editMasterCropPrice,
+        updateCropMandiPrice: editMasterCropPrice,
         deleteMasterCrop,
+        refreshMandiPrices,
         addAuditLog,
         confirmationModal,
         openConfirmation,

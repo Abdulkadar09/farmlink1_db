@@ -21,9 +21,11 @@ export const Header: React.FC = () => {
     activeTab,
     setActiveTab,
     setActiveView,
+    setSelectedListingId,
+    setSelectedNegotiationId,
     logout,
     notifications,
-    markNotificationAsRead,
+    navigateToNotification,
     switchDemoUser
   } = useFarmLink();
 
@@ -60,17 +62,17 @@ export const Header: React.FC = () => {
   const recentNotifs = userNotifs.slice(0, 5);
 
   const handleTabClick = (tabId: string) => {
+    if (tabId === 'search' || tabId === 'my-listings') {
+      setSelectedListingId(null);
+      setSelectedNegotiationId(null);
+    }
     setActiveTab(tabId);
     setActiveView('dashboard');
   };
 
   const handleNotificationClick = (notif: typeof userNotifs[0]) => {
-    markNotificationAsRead(notif.id);
     setShowBellDropdown(false);
-    if (notif.linkTab) {
-      setActiveTab(notif.linkTab);
-      setActiveView('dashboard');
-    }
+    navigateToNotification(notif);
   };
 
   return (
@@ -171,7 +173,7 @@ export const Header: React.FC = () => {
                   id="nav-tab-buyer-search"
                   onClick={() => handleTabClick('search')}
                   className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-                    activeTab === 'search'
+                    activeTab === 'search' || activeTab === 'search-discover'
                       ? 'bg-emerald-800 text-white shadow-xs'
                       : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                   }`}
@@ -280,7 +282,7 @@ export const Header: React.FC = () => {
                   id="nav-tab-admin-orders"
                   onClick={() => handleTabClick('orders-disputes')}
                   className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-                    activeTab === 'orders-disputes'
+                    activeTab === 'orders-disputes' || activeTab === 'disputes'
                       ? 'bg-stone-900 text-white shadow-xs'
                       : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                   }`}
@@ -291,7 +293,7 @@ export const Header: React.FC = () => {
                   id="nav-tab-admin-reports"
                   onClick={() => handleTabClick('reports')}
                   className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-                    activeTab === 'reports'
+                    activeTab === 'reports' || activeTab === 'logs'
                       ? 'bg-stone-900 text-white shadow-xs'
                       : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                   }`}
@@ -302,7 +304,7 @@ export const Header: React.FC = () => {
                   id="nav-tab-admin-settings"
                   onClick={() => handleTabClick('settings')}
                   className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-                    activeTab === 'settings'
+                    activeTab === 'settings' || activeTab === 'price-index'
                       ? 'bg-stone-900 text-white shadow-xs'
                       : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                   }`}
@@ -437,6 +439,7 @@ export const Header: React.FC = () => {
                         onClick={() => {
                           setShowBellDropdown(false);
                           setActiveTab('notifications');
+                          setActiveView('dashboard');
                         }}
                         className="w-full py-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-900 inline-flex items-center justify-center gap-1 cursor-pointer"
                       >

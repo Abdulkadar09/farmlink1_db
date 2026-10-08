@@ -16,25 +16,15 @@ export const FarmerNotifications: React.FC = () => {
   const {
     currentUser,
     notifications,
-    markNotificationAsRead,
     markAllNotificationsAsRead,
-    setActiveTab,
-    setSelectedListingId
+    navigateToNotification
   } = useFarmLink();
 
   const userNotifs = notifications.filter(n => n.userId === currentUser?.id);
   const unreadCount = userNotifs.filter(n => !n.read).length;
 
   const handleNotificationAction = (notif: (typeof userNotifs)[0]) => {
-    markNotificationAsRead(notif.id);
-    if (notif.linkId) {
-      setSelectedListingId(notif.linkId);
-    }
-    if (notif.linkTab) {
-      setActiveTab(notif.linkTab);
-    } else {
-      setActiveTab('my-listings');
-    }
+    navigateToNotification(notif);
   };
 
   const getIcon = (type: string) => {
@@ -106,10 +96,11 @@ export const FarmerNotifications: React.FC = () => {
             <div
               key={notif.id}
               id={`farmer-notification-${notif.id}`}
-              className={`p-5 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+              onClick={() => handleNotificationAction(notif)}
+              className={`p-5 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer hover:shadow-sm ${
                 !notif.read
                   ? 'bg-emerald-50/40 border-emerald-300 shadow-xs'
-                  : 'bg-white border-stone-200'
+                  : 'bg-white border-stone-200 hover:border-stone-300'
               }`}
             >
               <div className="flex items-start gap-3.5">

@@ -146,7 +146,7 @@ export const BuyerOrders: React.FC = () => {
                         Agreed Price
                       </span>
                       <span className="text-lg font-bold text-emerald-800">
-                        ₹{order.agreedPrice} <span className="text-xs font-medium text-stone-600">/ {order.unit}</span>
+                        ₹{order.agreedPrice ?? order.finalPricePerUnit} <span className="text-xs font-medium text-stone-600">/ {order.unit}</span>
                       </span>
                     </div>
                   </div>
@@ -178,9 +178,9 @@ export const BuyerOrders: React.FC = () => {
                     </div>
                   </div>
 
-                  {order.disputeNote && (
+                  {(order.disputeNote || order.disputeReason) && (
                     <div className="p-3 bg-red-50 text-red-800 rounded-xl border border-red-200 text-xs">
-                      <strong>Issue Logged to Admin:</strong> {order.disputeNote}
+                      <strong>Issue Logged to Admin:</strong> {order.disputeNote || order.disputeReason}
                     </div>
                   )}
                 </div>

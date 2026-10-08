@@ -17,15 +17,18 @@ export const AdminSystemLogs: React.FC = () => {
   const [actionFilter, setActionFilter] = useState('all');
 
   const filteredLogs = auditLogs.filter(log => {
-    if (actionFilter !== 'all' && !log.action.toLowerCase().includes(actionFilter.toLowerCase())) {
+    const actionText = log.action || log.adminAction || '';
+    const userText = log.userName || log.adminEmail || '';
+    const detailsText = log.details || log.target || '';
+    if (actionFilter !== 'all' && !actionText.toLowerCase().includes(actionFilter.toLowerCase())) {
       return false;
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
-        log.userName.toLowerCase().includes(q) ||
-        log.action.toLowerCase().includes(q) ||
-        log.details.toLowerCase().includes(q)
+        userText.toLowerCase().includes(q) ||
+        actionText.toLowerCase().includes(q) ||
+        detailsText.toLowerCase().includes(q)
       );
     }
     return true;
@@ -37,11 +40,11 @@ export const AdminSystemLogs: React.FC = () => {
     const rows = filteredLogs.map(log => [
       log.id,
       `"${log.timestamp}"`,
-      log.userId,
-      `"${log.userName}"`,
-      log.userRole,
-      `"${log.action}"`,
-      `"${log.details.replace(/"/g, '""')}"`
+      log.userId || 'user-admin-1',
+      `"${log.userName || log.adminEmail || 'Admin'}"`,
+      log.userRole || 'admin',
+      `"${log.action || log.adminAction || ''}"`,
+      `"${(log.details || log.target || '').replace(/"/g, '""')}"`
     ]);
 
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFarmLink } from '../../context/FarmLinkContext';
 import { Negotiation } from '../../types';
 import {
@@ -26,7 +26,9 @@ export const BuyerNegotiations: React.FC = () => {
     rejectOffer,
     counterOffer,
     openConfirmation,
-    setActiveTab
+    setActiveTab,
+    selectedNegotiationId,
+    setSelectedNegotiationId
   } = useFarmLink();
 
   const [activeSubTab, setActiveSubTab] = useState<'active' | 'completed' | 'closed'>('active');
@@ -61,6 +63,20 @@ export const BuyerNegotiations: React.FC = () => {
     setCounterNote('');
     setErrorMsg('');
   };
+
+  // Auto-open negotiation thread if user clicked a notification for a specific negotiation
+  useEffect(() => {
+    if (selectedNegotiationId) {
+      const matched = myNegotiations.find(n => n.id === selectedNegotiationId);
+      if (matched) {
+        if (matched.status === 'active') setActiveSubTab('active');
+        else if (matched.status === 'accepted') setActiveSubTab('completed');
+        else setActiveSubTab('closed');
+        handleOpenThread(matched);
+      }
+      setSelectedNegotiationId(null);
+    }
+  }, [selectedNegotiationId, myNegotiations, setSelectedNegotiationId]);
 
   const handleSendCounter = (negId: string) => {
     if (!counterPrice || Number(counterPrice) <= 0) {

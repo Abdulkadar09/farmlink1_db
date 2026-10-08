@@ -17,7 +17,7 @@ export interface User {
   ratingCount?: number;
   memberSince?: string;
   // Buyer specific
-  businessType?: 'Household' | 'Vendor' | 'Restaurant' | 'Wholesaler';
+  businessType?: 'Household' | 'Vendor' | 'Restaurant' | 'Wholesaler' | string;
 }
 
 export interface CropMaster {
@@ -46,7 +46,7 @@ export interface ProduceListing {
   farmAddress: string;
   coordinates: { lat: number; lng: number };
   photoUrl: string;
-  status: 'Active' | 'Expired';
+  status: 'Active' | 'Expired' | 'Flagged';
   availableForDelivery: boolean;
   notes?: string;
 }
@@ -103,6 +103,7 @@ export interface Order {
   quantity: number;
   unit: string;
   finalPricePerUnit: number;
+  agreedPrice?: number;
   totalAmount: number;
   pickupLocation: string;
   coordinates: { lat: number; lng: number };
@@ -111,6 +112,7 @@ export interface Order {
   createdAt: string;
   completedAt?: string;
   disputeReason?: string;
+  disputeNote?: string;
   disputeResolution?: string;
 }
 
@@ -119,6 +121,8 @@ export interface SavedAlert {
   buyerId: string;
   cropName: string;
   maxRadiusKm: number;
+  radiusKm?: number;
+  maxTargetPrice?: number;
   createdAt: string;
   matchCount?: number;
 }
@@ -141,4 +145,9 @@ export interface AuditLog {
   target: string;
   timestamp: string;
   adminEmail: string;
+  userId?: string;
+  userName?: string;
+  userRole?: string;
+  action?: string;
+  details?: string;
 }
